@@ -1,0 +1,23 @@
+ARG BINARYNAME=dinit
+
+FROM --platform=${BUILDPLATFORM} golang:alpine AS build
+ARG BINARYNAME
+ENV CGO_ENABLED=0
+WORKDIR /src
+COPY go.mod *.go /src/
+RUN export GOARCH=amd64 GOOS=linux \
+  ; go build -o /out/${BINARYNAME}-${GOOS}-${GOARCH} .
+RUN export GOARCH=arm GOOS=linux \
+  ; go build -o /out/${BINARYNAME}-${GOOS}-${GOARCH} .
+RUN export GOARCH=arm64 GOOS=linux \
+  ; go build -o /out/${BINARYNAME}-${GOOS}-${GOARCH} .
+
+FROM scratch AS bin-all
+COPY --from=build /out/ /
+
+FROM scratch as image
+ARG BINARYNAME
+ARG TARGETOS
+ARG TARGETARCH
+COPY --from=build /out/${BINARYNAME}-${TARGETOS}-${TARGETARCH} /init
+ENTRYPOINT ["/init"]
